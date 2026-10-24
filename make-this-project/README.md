@@ -1,26 +1,103 @@
-# Make This Project
+# Alerta Água
 
-Faça esse projeto
+Aplicativo web para registrar, visualizar e acompanhar ocorrências de alagamentos e enchentes em diferentes regiões. A plataforma permite que a comunidade consulte relatos em tempo real, filtre por gravidade e status, e visualize os pontos em um mapa interativo.
 
-This project was built with APS.
+## ✨ Funcionalidades
 
-**Live app**: https://make-this-project.aps.app
+- Mapa interativo com pontos de ocorrências
+- Registro de relatos com endereço, gravidade e tipo da situação
+- Filtros por gravidade, status e período
+- Busca por endereço ou região
+- Dashboard com estatísticas gerais
+- Cards informativos sobre condições climáticas
+- Interface responsiva para desktop e mobile
+- Estrutura preparada para evolução para backend real ou integração com banco de dados
 
-## Build with APS
+## 🧩 Tecnologias utilizadas
 
-Continue developing this project in the APS editor.
+- React
+- TypeScript
+- Vite
+- TanStack Router
+- Tailwind CSS
+- Leaflet
+- Recharts
+- Vitest
+- shadcn/ui
 
-- **Ship faster**: describe what you want to build and APS handles the code.
-- **Stay in sync**: every change made in APS is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into APS, ready for your next prompt.
+## 🏗️ Estrutura do projeto
 
-## Development
+```bash
+src/
+├── components/
+├── hooks/
+├── lib/
+├── routes/
+├── services/
+├── test/
+├── types/
+├── router.tsx
+├── server.ts
+├── start.ts
+├── styles.css
+└── routeTree.gen.ts
+```
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## 🚀 Como executar localmente
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+### Pré-requisitos
+
+- Node.js 18+
+- npm ou bun
+
+### Instalação
+
+```bash
+git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
+cd SEU_REPOSITORIO
+npm install
+```
+
+### Executar em desenvolvimento
+
+```bash
 npm run dev
 ```
+
+A aplicação estará disponível no endereço padrão do Vite, normalmente:
+
+```bash
+http://localhost:5173
+```
+
+### Build para produção
+
+```bash
+npm run build
+```
+
+### Testes
+
+```bash
+npm run test
+```
+
+## 📌 Observação
+
+O projeto atualmente usa armazenamento local para simular dados de ocorrências e confirmações, o que facilita a demonstração e testes iniciais. Em uma versão futura, o ideal é substituir esse armazenamento por uma API e banco de dados reais.
+
+## 📝 Licença
+
+Este projeto está disponível para fins acadêmicos e de desenvolvimento.
+
+## 👤 Autor
+
+Seu nome ou nome da equipe aqui.
+
+---
+
+Se quiser, pode adicionar uma seção com:
+- capturas de tela
+- arquitetura do sistema
+- instruções para deploy
+- link do protótipo ou demo
