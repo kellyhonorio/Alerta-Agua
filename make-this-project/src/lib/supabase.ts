@@ -22,8 +22,9 @@ export function getSupabaseClient(env: SupabaseEnv = import.meta.env): SupabaseC
 
   return createClient(url, anonKey, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
   });
 }

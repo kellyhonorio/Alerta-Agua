@@ -87,6 +87,7 @@ function toView(s: Store, o: Occurrence): OccurrenceView {
 function mapOccurrenceRow(row: Record<string, any>): Occurrence {
   return {
     id: row.id,
+    userId: row.userId ?? row.user_id ?? null,
     titulo: row.titulo ?? row.title ?? "",
     descricao: row.descricao ?? row.description ?? "",
     tipo: row.tipo ?? row.type ?? "outro",
@@ -151,10 +152,18 @@ export function getOccurrence(id: string): OccurrenceView | null {
   return o ? toView(s, o) : null;
 }
 
-export type NewOccurrence = Omit<Occurrence, "id" | "updatedAt" | "isDemo" | "autor">;
+export type NewOccurrence = Omit<Occurrence, "id" | "updatedAt" | "isDemo" | "autor" | "userId"> & {
+  userId?: string | null;
+};
 
 export async function createOccurrence(input: NewOccurrence): Promise<string> {
   if (supabase) {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      throw new Error("Você precisa estar logado para registrar um alagamento.");
+    }
+
+    const user = userData.user;
     const now = new Date().toISOString();
     const payload = {
       titulo: input.titulo,
@@ -165,7 +174,8 @@ export async function createOccurrence(input: NewOccurrence): Promise<string> {
       latitude: input.latitude,
       longitude: input.longitude,
       photos: input.photos ?? [],
-      autor: "Visitante",
+      autor: user.email ?? user.user_metadata?.full_name ?? "Usuário",
+      user_id: user.id,
       is_demo: false,
       created_at: now,
       updated_at: now,

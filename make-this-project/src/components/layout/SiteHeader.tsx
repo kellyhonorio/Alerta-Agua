@@ -1,15 +1,56 @@
-import { Link } from "@tanstack/react-router";
-import { Menu, Plus, UserRound, X } from "lucide-react";
-import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { LogOut, Menu, Plus, UserRound, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 const NAV = [
   { to: "/", label: "Mapa" },
+  { to: "/meus-relatos", label: "Meus relatos" },
+  { to: "/perfil", label: "Perfil" },
   { to: "/sobre", label: "Sobre" },
 ] as const;
 
+type SessionState = Awaited<ReturnType<NonNullable<typeof supabase>["auth"]["getSession"]>>["data"]["session"];
+
 export function SiteHeader() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState<SessionState | null>(null);
+
+  useEffect(() => {
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
+
+    let active = true;
+
+    async function sync() {
+      const { data } = await supabase.auth.getSession();
+      if (active) setSession(data.session);
+    }
+
+    void sync();
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (active) setSession(nextSession);
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleSignOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setSession(null);
+    navigate({ to: "/" });
+  }
+
+  const displayName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")?.[0] || "Usuário";
+
   return (
     <header className="sticky top-0 z-40 bg-navy text-navy-foreground shadow-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-4">
@@ -27,9 +68,22 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost" className="text-navy-foreground hover:bg-navy-foreground/10 hover:text-navy-foreground">
-            <Link to="/login"><UserRound /> Entrar</Link>
-          </Button>
+          {session ? (
+            <>
+              <div className="flex items-center gap-2 rounded-full border border-navy-foreground/15 bg-navy-foreground/5 px-3 py-1.5 text-sm">
+                <UserRound className="h-4 w-4" />
+                <span className="max-w-[160px] truncate">{displayName}</span>
+              </div>
+              <Button type="button" variant="ghost" onClick={handleSignOut} className="text-navy-foreground hover:bg-navy-foreground/10 hover:text-navy-foreground">
+                <LogOut className="h-4 w-4" />
+                Sair
+              </Button>
+            </>
+          ) : (
+            <Button asChild variant="ghost" className="text-navy-foreground hover:bg-navy-foreground/10 hover:text-navy-foreground">
+              <Link to="/login"><UserRound /> Entrar</Link>
+            </Button>
+          )}
           <Button asChild variant="alert">
             <Link to="/registrar"><Plus /> Registrar alagamento</Link>
           </Button>
@@ -52,7 +106,14 @@ export function SiteHeader() {
           {NAV.map((n) => (
             <Link key={n.to} to={n.to} className="block rounded-lg px-3 py-3 font-medium">{n.label}</Link>
           ))}
-          <Link to="/login" className="block rounded-lg px-3 py-3 font-medium">Entrar / Cadastrar</Link>
+          {session ? (
+            <button type="button" onClick={handleSignOut} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-navy-foreground/10 px-3 py-3 font-medium text-left">
+              <LogOut className="h-4 w-4" />
+              Sair ({displayName})
+            </button>
+          ) : (
+            <Link to="/login" className="block rounded-lg px-3 py-3 font-medium">Entrar / Cadastrar</Link>
+          )}
           <Button asChild variant="alert" className="mt-2 w-full">
             <Link to="/registrar"><Plus /> Registrar alagamento</Link>
           </Button>

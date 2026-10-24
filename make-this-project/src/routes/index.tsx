@@ -1,12 +1,13 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Clock, Info, Loader2, MapPinned, Plus, Search, Waves } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { MapView } from "@/components/map/MapView";
 import { SeverityBadge, SeverityDot, StatusBadge } from "@/components/occurrence/badges";
 import { WeatherCard } from "@/components/WeatherCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { useOccurrences } from "@/services/occurrences";
 import { SEVERITY_LABEL, STATUS_LABEL, type OccurrenceStatus, type Severity } from "@/types/occurrence";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/")({
 });
 
 const PERIODS = { "24h": 24, "7d": 168, todos: Infinity } as const;
+type SessionState = Awaited<ReturnType<NonNullable<typeof supabase>["auth"]["getSession"]>>["data"]["session"];
 
 function Dashboard() {
   const data = useOccurrences();
@@ -34,17 +36,48 @@ function Dashboard() {
   const [q, setQ] = useState("");
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
+  const [session, setSession] = useState<SessionState | null>(null);
+
+  useEffect(() => {
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
+
+    let active = true;
+
+    async function sync() {
+      const { data } = await supabase.auth.getSession();
+      if (active) setSession(data.session);
+    }
+
+    void sync();
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (active) setSession(nextSession);
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     const now = Date.now();
-    return data.filter(
-      (o) =>
-        (sev === "todas" || o.gravidade === sev) &&
-        (st === "todos" || o.status === st) &&
-        now - new Date(o.createdAt).getTime() <= PERIODS[period] * 3600_000,
-    );
-  }, [data, sev, st, period]);
+    const userId = session?.user?.id;
+    const userEmail = session?.user?.email;
+
+    return data.filter((o) => {
+      const matchesSeverity = sev === "todas" || o.gravidade === sev;
+      const matchesStatus = st === "todos" || o.status === st;
+      const matchesPeriod = now - new Date(o.createdAt).getTime() <= PERIODS[period] * 3600_000;
+      const matchesUser = !showOnlyMine || !userId ? true : Boolean(o.userId === userId || (userEmail && o.autor === userEmail));
+
+      return matchesSeverity && matchesStatus && matchesPeriod && matchesUser;
+    });
+  }, [data, sev, st, period, showOnlyMine, session]);
 
   const stats = useMemo(() => {
     const d = data ?? [];
@@ -98,9 +131,21 @@ function Dashboard() {
             </form>
           </div>
           <div className="flex flex-wrap gap-2 border-b p-3 text-sm">
-            <Select label="Gravidade" value={sev} onChange={(v) => setSev(v as Severity | "todas")} options={[["todas", "Todas"], ...Object.entries(SEVERITY_LABEL)]} />
-            <Select label="Status" value={st} onChange={(v) => setSt(v as OccurrenceStatus | "todos")} options={[["todos", "Todos"], ...Object.entries(STATUS_LABEL)]} />
-            <Select label="Data" value={period} onChange={(v) => setPeriod(v as keyof typeof PERIODS)} options={[["todos", "Qualquer data"], ["24h", "Últimas 24h"], ["7d", "Últimos 7 dias"]]} />
+            <Select label="Gravidade" value={sev} onChange={(v) => setSev(v as Severity | "todas")} options={[ ["todas", "Todas"], ...Object.entries(SEVERITY_LABEL)]} />
+            <Select label="Status" value={st} onChange={(v) => setSt(v as OccurrenceStatus | "todos")} options={[ ["todos", "Todos"], ...Object.entries(STATUS_LABEL)]} />
+            <Select label="Data" value={period} onChange={(v) => setPeriod(v as keyof typeof PERIODS)} options={[ ["todos", "Qualquer data"], ["24h", "Últimas 24h"], ["7d", "Últimos 7 dias"]]} />
+            {session && (
+              <button
+                type="button"
+                onClick={() => setShowOnlyMine((current) => !current)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                  showOnlyMine ? "border-primary bg-primary/10 text-primary" : "border-input bg-background text-foreground",
+                )}
+              >
+                {showOnlyMine ? "Mostrando só meus relatos" : "Só meus relatos"}
+              </button>
+            )}
           </div>
           <div className="relative">
             <MapView occurrences={filtered} focus={focus} onOpen={(id) => navigate({ to: "/ocorrencia/$id", params: { id } })} className="h-[60vh] min-h-[420px] w-full" />

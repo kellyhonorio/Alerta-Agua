@@ -12,6 +12,7 @@ export interface Confirmation {
 
 export interface Occurrence {
   id: string;
+  userId?: string | null;
   titulo: string;
   descricao: string;
   tipo: OccurrenceType;

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MeusRelatosRouteImport } from './routes/meus-relatos'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RegistrarRouteImport } from './routes/registrar'
@@ -32,6 +33,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeusRelatosRoute = MeusRelatosRouteImport.update({
+  id: '/meus-relatos',
+  path: '/meus-relatos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerfilRoute = PerfilRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/meus-relatos': typeof MeusRelatosRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registrar': typeof RegistrarRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/meus-relatos': typeof MeusRelatosRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registrar': typeof RegistrarRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/meus-relatos': typeof MeusRelatosRoute
   '/perfil': typeof PerfilRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/registrar': typeof RegistrarRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cadastro'
     | '/login'
+    | '/meus-relatos'
     | '/perfil'
     | '/recuperar-senha'
     | '/registrar'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cadastro'
     | '/login'
+    | '/meus-relatos'
     | '/perfil'
     | '/recuperar-senha'
     | '/registrar'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cadastro'
     | '/login'
+    | '/meus-relatos'
     | '/perfil'
     | '/recuperar-senha'
     | '/registrar'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CadastroRoute: typeof CadastroRoute
   LoginRoute: typeof LoginRoute
+  MeusRelatosRoute: typeof MeusRelatosRoute
   PerfilRoute: typeof PerfilRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RegistrarRoute: typeof RegistrarRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meus-relatos': {
+      id: '/meus-relatos'
+      path: '/meus-relatos'
+      fullPath: '/meus-relatos'
+      preLoaderRoute: typeof MeusRelatosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/perfil': {
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CadastroRoute: CadastroRoute,
   LoginRoute: LoginRoute,
+  MeusRelatosRoute: MeusRelatosRoute,
   PerfilRoute: PerfilRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RegistrarRoute: RegistrarRoute,
