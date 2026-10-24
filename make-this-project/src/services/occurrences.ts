@@ -1,9 +1,10 @@
 /**
- * Data access layer. Today: local demo store (browser storage).
- * Replace these functions with APS Cloud queries without touching the UI.
+ * Data access layer.
+ * Uses Supabase when configured; otherwise falls back to the local demo store.
  */
 import { useEffect, useState } from "react";
 import { computeStatus } from "@/lib/lifecycle";
+import { supabase } from "@/lib/supabase";
 import type { Confirmation, ConfirmationKind, Occurrence, OccurrenceStatus } from "@/types/occurrence";
 
 const KEY = "alerta-agua:v1";
@@ -83,7 +84,61 @@ function toView(s: Store, o: Occurrence): OccurrenceView {
   };
 }
 
+function mapOccurrenceRow(row: Record<string, any>): Occurrence {
+  return {
+    id: row.id,
+    titulo: row.titulo ?? row.title ?? "",
+    descricao: row.descricao ?? row.description ?? "",
+    tipo: row.tipo ?? row.type ?? "outro",
+    gravidade: row.gravidade ?? row.severity ?? "moderado",
+    endereco: row.endereco ?? row.address ?? "",
+    latitude: Number(row.latitude ?? row.lat ?? 0),
+    longitude: Number(row.longitude ?? row.lng ?? 0),
+    createdAt: row.createdAt ?? row.created_at ?? new Date().toISOString(),
+    updatedAt: row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? new Date().toISOString(),
+    photos: Array.isArray(row.photos) ? row.photos : [],
+    autor: row.autor ?? row.author ?? "Visitante",
+    isDemo: Boolean(row.isDemo ?? row.is_demo ?? false),
+  };
+}
+
+function mapConfirmationRow(row: Record<string, any>): Confirmation {
+  return {
+    id: row.id,
+    occurrenceId: row.occurrenceId ?? row.occurrence_id,
+    kind: row.kind,
+    createdAt: row.createdAt ?? row.created_at ?? new Date().toISOString(),
+  };
+}
+
+async function fetchFromSupabase(): Promise<OccurrenceView[]> {
+  if (!supabase) return listOccurrences();
+
+  const [occurrencesResult, confirmationsResult] = await Promise.all([
+    supabase.from("occurrences").select("*"),
+    supabase.from("confirmations").select("*"),
+  ]);
+
+  if (occurrencesResult.error) throw new Error(occurrencesResult.error.message);
+  if (confirmationsResult.error) throw new Error(confirmationsResult.error.message);
+
+  const confirmations = (confirmationsResult.data ?? []).map(mapConfirmationRow);
+  return ((occurrencesResult.data ?? []) as Record<string, any>[])
+    .map((row) => {
+      const occurrence = mapOccurrenceRow(row);
+      const cs = confirmations.filter((c) => c.occurrenceId === occurrence.id);
+      return {
+        ...occurrence,
+        status: computeStatus(occurrence, cs),
+        confirmacoesAtiva: cs.filter((c) => c.kind === "ativa").length,
+        confirmacoesNormalizada: cs.filter((c) => c.kind === "normalizada").length,
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 export function listOccurrences(): OccurrenceView[] {
+  if (supabase) return [];
   const s = load();
   return s.occurrences
     .map((o) => toView(s, o))
@@ -99,6 +154,33 @@ export function getOccurrence(id: string): OccurrenceView | null {
 export type NewOccurrence = Omit<Occurrence, "id" | "updatedAt" | "isDemo" | "autor">;
 
 export async function createOccurrence(input: NewOccurrence): Promise<string> {
+  if (supabase) {
+    const now = new Date().toISOString();
+    const payload = {
+      titulo: input.titulo,
+      descricao: input.descricao,
+      tipo: input.tipo,
+      gravidade: input.gravidade,
+      endereco: input.endereco,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      photos: input.photos ?? [],
+      autor: "Visitante",
+      is_demo: false,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const { data, error } = await supabase
+      .from("occurrences")
+      .insert([payload])
+      .select("id")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data.id;
+  }
+
   await new Promise((r) => setTimeout(r, 500));
   const s = load();
   const id = crypto.randomUUID();
@@ -116,10 +198,17 @@ export function hasVoted(id: string): boolean {
   }
 }
 
-export function confirmOccurrence(id: string, kind: ConfirmationKind) {
+export async function confirmOccurrence(id: string, kind: ConfirmationKind) {
   if (hasVoted(id)) throw new Error("Você já enviou uma confirmação para este relato.");
-  const s = load();
-  save({ ...s, confirmations: [...s.confirmations, { id: crypto.randomUUID(), occurrenceId: id, kind, createdAt: new Date().toISOString() }] });
+
+  if (supabase) {
+    const { error } = await supabase.from("confirmations").insert([{ occurrence_id: id, kind, created_at: new Date().toISOString() }]);
+    if (error) throw new Error(error.message);
+  } else {
+    const s = load();
+    save({ ...s, confirmations: [...s.confirmations, { id: crypto.randomUUID(), occurrenceId: id, kind, createdAt: new Date().toISOString() }] });
+  }
+
   const voted = JSON.parse(localStorage.getItem(VOTED_KEY) ?? "[]") as string[];
   localStorage.setItem(VOTED_KEY, JSON.stringify([...voted, id]));
 }
@@ -128,12 +217,32 @@ export function confirmOccurrence(id: string, kind: ConfirmationKind) {
 export function useOccurrences(): OccurrenceView[] | null {
   const [data, setData] = useState<OccurrenceView[] | null>(null);
   useEffect(() => {
-    const update = () => setData(listOccurrences());
-    const t = setTimeout(update, 250);
-    listeners.add(update);
+    let active = true;
+
+    async function update() {
+      try {
+        const next = supabase ? await fetchFromSupabase() : listOccurrences();
+        if (active) setData(next);
+      } catch {
+        if (active) setData(listOccurrences());
+      }
+    }
+
+    update();
+    if (!supabase) {
+      const t = setTimeout(() => {
+        if (active) setData(listOccurrences());
+      }, 250);
+      listeners.add(update as never);
+      return () => {
+        active = false;
+        clearTimeout(t);
+        listeners.delete(update as never);
+      };
+    }
+
     return () => {
-      clearTimeout(t);
-      listeners.delete(update);
+      active = false;
     };
   }, []);
   return data;

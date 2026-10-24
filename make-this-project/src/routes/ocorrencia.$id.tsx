@@ -37,9 +37,9 @@ function Detalhes() {
       </main>
     );
 
-  function vote(kind: "ativa" | "normalizada") {
+  async function vote(kind: "ativa" | "normalizada") {
     try {
-      confirmOccurrence(id, kind);
+      await confirmOccurrence(id, kind);
       setVoted(true);
       toast.success("Obrigado! Sua confirmação foi registrada.");
     } catch (e) {
@@ -80,8 +80,8 @@ function Detalhes() {
               <div className="rounded-xl bg-ok/10 p-3"><p className="font-display text-2xl font-bold text-ok">{o.confirmacoesNormalizada}</p><p className="text-xs">Normalizado</p></div>
             </div>
             <div className="mt-4 space-y-2">
-              <Button className="w-full" disabled={voted} onClick={() => vote("ativa")}><Waves /> Confirmar que ainda existe</Button>
-              <Button variant="ok" className="w-full" disabled={voted} onClick={() => vote("normalizada")}><CheckCircle2 /> Informar que foi normalizado</Button>
+              <Button className="w-full" disabled={voted} onClick={() => void vote("ativa")}><Waves /> Confirmar que ainda existe</Button>
+              <Button variant="ok" className="w-full" disabled={voted} onClick={() => void vote("normalizada")}><CheckCircle2 /> Informar que foi normalizado</Button>
               {voted && <p className="text-center text-xs text-muted-foreground">Você já confirmou este relato.</p>}
             </div>
           </Panel>

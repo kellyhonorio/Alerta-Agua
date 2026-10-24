@@ -16,9 +16,5 @@ export function Panel({ children, className }: { children: ReactNode; className?
 }
 
 export function PendingIntegration({ feature }: { feature: string }) {
-  return (
-    <div role="status" className="rounded-xl border border-sev-low bg-sev-low/15 p-4 text-sm text-navy">
-      <strong>{feature}: pendente de integração.</strong> Esta função será ativada quando o backend (APS Cloud) for conectado. Nenhum login é simulado.
-    </div>
-  );
+  return null;
 }

@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Droplets, Menu, Plus, UserRound, X } from "lucide-react";
+import { Menu, Plus, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
   { to: "/", label: "Mapa" },
-  { to: "/seguranca", label: "Segurança" },
   { to: "/sobre", label: "Sobre" },
 ] as const;
 
@@ -15,9 +14,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 bg-navy text-navy-foreground shadow-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-4">
         <Link to="/" className="flex min-w-0 items-center gap-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary">
-            <Droplets className="h-5 w-5" />
-          </span>
+          <img src="/logo-alerta-agua.svg" alt="Logo Alerta Água" className="h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
           <span className="truncate font-display text-base font-bold sm:text-lg">Alerta Água</span>
         </Link>
 
