@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ImagePlus, Loader2, LocateFixed, X } from "lucide-react";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { MapView } from "@/components/map/MapView";
 import { Panel, PageShell } from "@/components/layout/PageShell";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchAddressSuggestions, type GeocodeSuggestion } from "@/lib/geocode";
 import { createOccurrence } from "@/services/occurrences";
 import { SEVERITY_LABEL, TYPE_LABEL, type OccurrenceType, type Severity } from "@/types/occurrence";
 
@@ -41,8 +42,43 @@ function Registrar() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
 
   const set = (k: keyof typeof f) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+
+  useEffect(() => {
+    const query = f.endereco.trim();
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        setSuggestionLoading(true);
+        const next = await fetchAddressSuggestions(query);
+        if (active) setSuggestions(next);
+      } catch {
+        if (active) setSuggestions([]);
+      } finally {
+        if (active) setSuggestionLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [f.endereco]);
+
+  function handleSelectSuggestion(suggestion: GeocodeSuggestion) {
+    setF((prev) => ({ ...prev, endereco: suggestion.address }));
+    setPos([suggestion.latitude, suggestion.longitude]);
+    setSuggestions([]);
+    setErrors((prev) => ({ ...prev, endereco: "", pos: "" }));
+  }
 
   function onFiles(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -114,7 +150,26 @@ function Registrar() {
             <Textarea value={f.descricao} onChange={set("descricao")} rows={4} maxLength={1000} placeholder="Altura da água, se há carros parados, correnteza…" />
           </Field>
           <Field label="Endereço ou referência *" error={errors.endereco}>
-            <Input value={f.endereco} onChange={set("endereco")} maxLength={200} />
+            <div className="relative">
+              <Input value={f.endereco} onChange={set("endereco")} maxLength={200} placeholder="Ex.: Rua da Liberdade, São Paulo" />
+              {suggestionLoading && (
+                <div className="absolute right-3 top-2.5 text-xs text-muted-foreground">Buscando…</div>
+              )}
+              {suggestions.length > 0 && (
+                <div className="mt-2 rounded-md border bg-background p-1 shadow-sm">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={`${suggestion.address}-${suggestion.latitude}-${suggestion.longitude}`}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className="flex w-full flex-col items-start rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
+                    >
+                      <span className="font-medium">{suggestion.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
           <Field label="Data e hora *" error={errors.dataHora}>
             <Input type="datetime-local" value={f.dataHora} onChange={set("dataHora")} />

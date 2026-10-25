@@ -120,10 +120,20 @@ Armazena as páginas da aplicação. O roteamento é baseado em arquivos, seguin
 Responsável pela interação com a camada de dados. É o módulo que decide se a aplicação fará uso do Supabase ou do armazenamento local.
 
 #### `lib/`
-Agrupa utilitários e regras de negócio, especialmente o cálculo de status e a configuração do cliente de conexão com o banco.
+Agrupa utilitários e regras de negócio, especialmente o cálculo de status, a geocodificação e a configuração do cliente de conexão com o banco.
 
 #### `types/`
 Define as estruturas de dados do domínio, padronizando os tipos usados na aplicação.
+
+### 6.2. Módulos relevantes da funcionalidade geográfica
+
+Dentre os módulos adicionados, destacam-se:
+
+- `src/lib/geocode.ts`: serviço de geocodificação baseado em Nominatim;
+- `src/routes/registrar.tsx`: formulário de cadastro com busca por endereço e atualização do mapa;
+- `src/components/map/MapView.tsx`: renderização do mapa e do marcador geográfico.
+
+Esses módulos permitem a integração direta entre o input textual e o posicionamento espacial do relato no mapa.
 
 ---
 
@@ -232,7 +242,9 @@ Os estados possíveis são:
 - `normalizada`;
 - `expirada`.
 
-A regra principal pode ser resumida como: uma ocorrência só é considerada ativa quando há uma confirmação de atividade relevante; se a ocorrência permanece sem atualização por um intervalo de tempo definido, ela é marcada como expirada. Caso haja predominância de confirmações de normalização, a ocorrência é classificada como normalizada.
+A regra principal do sistema é: uma ocorrência é classificada como normalizada apenas quando a quantidade de confirmações de normalização excede a quantidade de confirmações de continuidade do problema. Enquanto a comunidade continuar indicando que o problema ainda existe, o estado permanece ativo, preservando a cor e o sinal visual do mapa. A expiração continua sendo calculada pelo tempo sem novas confirmações, independentemente da normalização.
+
+Além disso, a lógica visual do mapa foi implementada para refletir diretamente esse status. Em um cenário de normalização, o ponto assume a coloração verde; em um cenário de continuidade, permanece com a coloração do alerta, preservando a representação do risco real.
 
 ---
 
@@ -259,11 +271,22 @@ Além do relato principal, o sistema permite que terceiros validem a ocorrência
 - `ativa` – a ocorrência ainda representa um problema real e relevante;
 - `normalizada` – a ocorrência foi resolvida ou não mais configura risco.
 
-Essa interação social transforma o sistema em uma ferramenta colaborativa de monitoramento e verificação de eventos.
+A lógica de status foi ajustada para que a confirmação de normalização não seja automaticamente ignorada quando houver outra validação ativa. Em termos práticos, o relato é considerado normalizado somente quando a comunidade confirma a resolução em número superior ao de confirmações de que ainda existe. Isso garante que a sinalização visual do mapa reflita o consenso da comunidade e não seja alterada por uma única resposta isolada.
 
-### 11.3. Consulta e visualização
+### 11.3. Integração endereço + mapa
 
-A aplicação lê os dados do banco ou do armazenamento local e os apresenta em interface amigável. Esse processo inclui a composição de cards, estatísticas e indicadores de situação, apoiando a leitura e a análise dos dados pelos usuários.
+A funcionalidade de cadastro foi ampliada com a integração entre campo de endereço e localização geográfica. O usuário pode digitar o nome do local ou endereço e receber sugestões de locais georreferenciados. Ao selecionar uma sugestão, o sistema preenche automaticamente:
+
+- o campo de endereço;
+- a latitude;
+- a longitude;
+- o marcador no mapa.
+
+Essa integração melhora a precisão do cadastro, reduz erros de geolocalização e torna o processo de reportar ocorrências mais eficiente. A localização também pode ser ajustada manualmente no mapa, permitindo correções quando necessário.
+
+### 11.4. Consulta e visualização
+
+A aplicação lê os dados do banco ou do armazenamento local e os apresenta em interface amigável. Esse processo inclui a composição de cards, estatísticas e indicadores de situação, apoiando a leitura e a análise dos dados pelos usuários. O mapa utiliza diferentes cores para distinguir visualmente ocorrências ativas, normalizadas e expirada, de modo que a situação seja intuitiva para o usuário.
 
 ---
 
@@ -323,9 +346,11 @@ Essas evoluções tornam o sistema mais robusto e mais adequado para uso em cont
 
 ## 16. Considerações Finais
 
-O projeto apresentado constitui uma solução tecnológica de monitoramento colaborativo de ocorrências relacionadas a alagamentos e enchentes. Sua estrutura combina uso de banco de dados relacional, arquitetura modular em frontend, lógica de negócio aplicada à validação comunitária e persistência acessível em ambiente de desenvolvimento e produção.
+O projeto apresentado constitui uma solução tecnológica de monitoramento colaborativo de ocorrências relacionadas a alagamentos e enchentes. Sua estrutura combina uso de banco de dados relacional, arquitetura modular em frontend, lógica de negócio aplicada à validação comunitária, geocodificação de endereço e persistência acessível em ambiente de desenvolvimento e produção.
 
-A proposta demonstra aplicabilidade prática em cenários urbanos, especialmente em regiões afetadas por chuvas intensas e problemas recorrentes de infraestrutura. A combinação entre coleta de dados, georreferenciamento e validação colaborativa torna a solução relevante como ferramenta de apoio à gestão de riscos e à tomada de decisão comunitária.
+A proposta demonstra aplicabilidade prática em cenários urbanos, especialmente em regiões afetadas por chuvas intensas e problemas recorrentes de infraestrutura. A combinação entre coleta de dados, georreferenciamento, validação colaborativa e interpretação visual do estado do problema torna a solução relevante como ferramenta de apoio à gestão de riscos e à tomada de decisão comunitária.
+
+A funcionalidade de geocodificação integra endereço e mapa, permitindo que o usuário registre o local com maior precisão e reduza erros de posicionamento. A lógica do status comunica de forma clara se a ocorrência ainda é um problema ou se a comunidade já a considera normalizada, reforçando a utilidade da plataforma como apoio à percepção de risco urbano.
 
 ---
 
@@ -334,103 +359,9 @@ A proposta demonstra aplicabilidade prática em cenários urbanos, especialmente
 - [supabase/schema.sql](supabase/schema.sql)
 - [src/services/occurrences.ts](src/services/occurrences.ts)
 - [src/lib/lifecycle.ts](src/lib/lifecycle.ts)
+- [src/lib/geocode.ts](src/lib/geocode.ts)
 - [src/lib/supabase.ts](src/lib/supabase.ts)
 - [src/types/occurrence.ts](src/types/occurrence.ts)
-- [README.md](README.md)
-
-
----
-
-## 10. Como o app decide entre Supabase e armazenamento local
-
-No arquivo `src/services/occurrences.ts`, o projeto faz uma verificação inteligente:
-
-- se o ambiente estiver configurado com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`, usa Supabase;
-- caso contrário, usa armazenamento local (`localStorage`) com dados de demonstração.
-
-Isso é muito útil para o desenvolvimento, pois permite testar a aplicação mesmo sem backend real.
-
-### Exemplo de comportamento
-
-- Ambiente com Supabase configurado: dados reais são carregados do banco.
-- Ambiente sem Supabase: é usada uma base demo em memória/armazenamento local.
-
-Essa estratégia deixa o projeto flexível para prototipagem e evolução.
-
----
-
-## 11. Fluxo técnico do sistema
-
-Em termos de execução, o projeto funciona assim:
-
-1. o usuário acessa a interface;
-2. a tela carrega ocorrências via `useOccurrences()`;
-3. o serviço consulta o banco ou o localStorage;
-4. o app calcula status e exibe os registros;
-5. o usuário pode registrar um relato ou confirmar um existente;
-6. os dados são persistidos e a interface reage automaticamente.
-
-Esse fluxo garante fácil manutenção e boa experiência para o usuário.
-
----
-
-## 12. Pontos fortes do projeto
-
-- arquitetura simples e didática;
-- integração com Supabase pronta;
-- suporte a dados locais em desenvolvimento;
-- foco em mapear ocorrências reais de risco;
-- uso de regras de negócio claras para status;
-- componentes reutilizáveis e interface moderna.
-
----
-
-## 13. Limitações atuais
-
-Mesmo sendo um projeto funcional e bem estruturado, ele ainda tem algumas limitações naturais de MVP:
-
-- políticas públicas de acesso no banco, que podem ser apertadas no futuro;
-- autenticação mais simples do que um sistema de produção;
-- necessidade de regras de validação mais robustas para evitar relatos falsos;
-- possibilidade de expansão para painel administrativo, filtros avançados e geolocalização mais precisa.
-
----
-
-## 14. Possíveis evoluções
-
-Para um próximo nível, o projeto pode evoluir para:
-
-- autenticação de usuários com perfil;
-- painel administrativo para moderar ocorrências;
-- notificação por email ou push;
-- geolocalização com mapa melhor integrado;
-- dashboard com estatísticas por bairro ou cidade;
-- histórico de resolução de ocorrências;
-- integração com API de clima e alertas meteorológicos.
-
----
-
-## 15. Conclusão
-
-Este projeto é uma aplicação de mapeamento comunitário focada na denúncia e acompanhamento de situações de alagamento e enchente. Ele usa uma estrutura moderna em React + TypeScript + Supabase e oferece uma base sólida para evolução.
-
-A ideia central é transformar relatos locais em um sistema organizado de monitoramento urbano, ajudando a comunidade a visualizar e acompanhar riscos ambientais de forma visual e prática.
-
-Se o objetivo for continuar o desenvolvimento, o próximo passo natural é reforçar:
-
-- autenticação de usuários;
-- políticas de segurança no Supabase;
-- validação de dados;
-- painel de administração;
-- apuração de estatísticas e mapas regionais.
-
----
-
-## 16. Referências internas do projeto
-
-- [supabase/schema.sql](supabase/schema.sql)
-- [src/services/occurrences.ts](src/services/occurrences.ts)
-- [src/lib/lifecycle.ts](src/lib/lifecycle.ts)
-- [src/lib/supabase.ts](src/lib/supabase.ts)
-- [src/types/occurrence.ts](src/types/occurrence.ts)
+- [src/routes/registrar.tsx](src/routes/registrar.tsx)
+- [src/components/map/MapView.tsx](src/components/map/MapView.tsx)
 - [README.md](README.md)

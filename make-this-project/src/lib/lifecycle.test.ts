@@ -14,9 +14,16 @@ describe("computeStatus", () => {
   it("expires after 12h without activity", () => {
     expect(computeStatus({ createdAt: ago(13) }, [], now)).toBe("expirada");
   });
-  it("needs 2 normalized votes outnumbering active ones", () => {
+  it("marks the report as normalizada as soon as a normalization vote is recorded and there is no active opposition", () => {
     const n = { kind: "normalizada" as const, createdAt: ago(1) };
-    expect(computeStatus({ createdAt: ago(2) }, [n], now)).toBe("pendente");
+    expect(computeStatus({ createdAt: ago(2) }, [n], now)).toBe("normalizada");
     expect(computeStatus({ createdAt: ago(2) }, [n, n], now)).toBe("normalizada");
+  });
+
+  it("keeps the report active when the community still confirms that it exists", () => {
+    const active = { kind: "ativa" as const, createdAt: ago(0.5) };
+    const normal = { kind: "normalizada" as const, createdAt: ago(1) };
+    expect(computeStatus({ createdAt: ago(2) }, [active, normal], now)).toBe("ativa");
+    expect(computeStatus({ createdAt: ago(2) }, [active, active, normal], now)).toBe("ativa");
   });
 });

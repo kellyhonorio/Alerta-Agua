@@ -4,8 +4,8 @@ import type { Confirmation, Occurrence, OccurrenceStatus } from "@/types/occurre
 export const LIFECYCLE = {
   /** Hours without new community confirmations before a report expires. */
   expiryHours: 12,
-  /** Minimum "normalized" votes (and more than "still active" votes) to mark as normalized. */
-  normalizeThreshold: 2,
+  /** A single normalization vote is enough to mark the report as resolved visually. */
+  normalizeThreshold: 1,
 };
 
 /**
